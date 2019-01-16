@@ -15,7 +15,6 @@ setup(
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
     author='Nick Kim',
-    author_email='ultrasound2k@gmail.com',
     url='https://github.com/ultrasound/ccli',
     license='MIT',
     packages=find_packages(exclude=['ez_setup', 'tests*']),
