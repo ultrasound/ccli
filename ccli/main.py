@@ -48,6 +48,7 @@ class Ccli(App):
             'yaml',
             'colorlog',
             'jinja2',
+            'print',
         ]
 
         # configuration handler

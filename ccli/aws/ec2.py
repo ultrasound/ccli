@@ -19,6 +19,25 @@ AMIS = [{'name': 'Amazon Linux2', 'id': 'ami-018a9a930060d38aa'},
        {'name': 'RedHat', 'id': 'ami-3eee4150', 'version': '7.5'},
        {'name': 'SUSE', 'id': 'ami-04ecb44b7d8e8d354', 'version': 'ES15'}]
 
+REGIONS = [
+    'us-east-1',
+    'us-east-2',
+    'us-west-1',
+    'us-west-2',
+    'us-gov-west-1',
+    'eu-west-1',
+    'eu-west-2',
+    'eu-central-1',
+    'ca-central-1',
+    'ap-southeast-1',
+    'ap-southeast-2',
+    'ap-northeast-1',
+    'ap-northeast-2',
+    'ap-south-1',
+    'sa-east-1',
+    'cn-north-1',
+]
+
 
 def datetime_to_str(data):
     if isinstance(data, datetime.datetime):
@@ -162,7 +181,8 @@ class EC2Operation:
 
 
 class LaunchEC2:
-    def run_instance(self, max_cnt=1, min_cnt=1, template_name=''):
+    @staticmethod
+    def run_instance(max_cnt=1, min_cnt=1, template_name=''):
         try:
             ec2.run_instances(
                 MaxCount=max_cnt,
@@ -230,6 +250,7 @@ class EC2Templates:
             print(f'Template ID: {template_id}\nTemplate Name: {template_name}\n')
         except ClientError as e:
             print(e)
+
 
     @staticmethod
     def delete_launch_template(template_name=''):

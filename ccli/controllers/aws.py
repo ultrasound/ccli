@@ -5,13 +5,16 @@ from cement import Controller, ex, shell
 from PyInquirer import prompt, print_json, Separator
 from examples import custom_style_3
 
-from ..aws.ec2 import EC2Operation, SecurityGroups, availability_zones
+from ..aws.ec2 import EC2Operation, SecurityGroups, availability_zones, LaunchEC2
 from ..aws.ec2 import EC2Templates as tmp
 from ..aws.ec2 import INSTANCE_TYPES, AMIS
 
 from ..aws.ec2_key import KeyPairOperation
 
+from ..aws.vpc import VPC
+
 key_pair_operation = KeyPairOperation()
+vpc_ = VPC()
 
 
 class AWS(Controller):
@@ -68,7 +71,7 @@ class EC2(Controller):
 
     @ex(help='create new instance')
     def create(self):
-        pass
+        LaunchEC2.run_instance(template_name='')
 
     @ex(help='delete an instance')
     def delete(self):
@@ -111,6 +114,10 @@ class Templates(Controller):
         sg_names = [security_group['GroupName'] for security_group in security_groups.get('SecurityGroups')]
         sg_ids = [security_group['GroupId'] for security_group in security_groups.get('SecurityGroups')]
 
+        subnets = vpc_.describe_subnets()
+        subnet_id = [subnet['SubnetId'] for subnet in subnets.get('Subnets')]
+        cidr_block = [subnet['CidrBlock'] for subnet in subnets.get('Subnets')]
+
         zones = availability_zones()
         zone_names = [zone['ZoneName'] for zone in zones.get('AvailabilityZones')]
 
@@ -146,6 +153,12 @@ class Templates(Controller):
                 'name': 'security group',
                 'message': 'Select Security Group',
                 'choices': sg_names,
+            },
+            {
+                'type': 'list',
+                'name': 'subnet id',
+                'message': 'Select subnet',
+                'choices': subnet_id,
             },
             {
                 'type': 'list',
@@ -193,6 +206,7 @@ class Templates(Controller):
             'InstanceType': answers['instance type'],
             'NetworkInterfaces': [
                 {
+                    "SubnetId": answers['subnet id'],
                     'AssociatePublicIpAddress': answers['public address'],
                     'DeleteOnTermination': True,
                     'Groups': [
@@ -221,7 +235,33 @@ class Templates(Controller):
                 template_data['TagSpecifications'] = tag_list
         except KeyError:
             pass
-        print(template_data)
+
         tmp.create_launch_template(template_name=answers['template name'], template_data=template_data)
+
+    @ex(help='delete template')
+    def delete_template(self):
+        response = tmp.describe_launch_templates()
+
+        template_list = []
+        for template in response.get('LaunchTemplates'):
+            template_list.append(template['LaunchTemplateName'])
+
+        questions = {
+            'type': 'list',
+            'name': 'template name',
+            'message': 'Select template to delete',
+            'choices': template_list
+        }
+
+        answers = prompt(questions, style=custom_style_3)
+
+        tmp.delete_launch_template(template_name=answers['template name'])
+
+    @ex(help='list template')
+    def list_template(self):
+        response = tmp.describe_launch_templates()
+        self.app.render(response, 'aws/list_template.jinja2')
+
+        return response
 
 
