@@ -7,7 +7,7 @@ from cement import App, TestApp, init_defaults
 from cement.core.exc import CaughtSignal
 from .core.exc import ccliError
 from .controllers.base import Base
-from .controllers.aws import AWS
+from .controllers.aws import AWS, EC2, Templates
 
 
 # configuration defaults
@@ -66,6 +66,8 @@ class Ccli(App):
         handlers = [
             Base,
             AWS,
+            EC2,
+            Templates,
         ]
 
         hooks = [

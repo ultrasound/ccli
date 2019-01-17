@@ -6,6 +6,19 @@ from botocore.exceptions import ClientError
 
 ec2 = boto3.client('ec2', region_name='ap-northeast-2')
 
+INSTANCE_TYPES = ['t2.nano',
+                  't2.micro',
+                  't2.small',
+                  't2.medium',
+                  't2.large',
+                  't2.xlarge',
+                  't2.2xlarge']
+
+AMIS = [{'name': 'Amazon Linux2', 'id': 'ami-018a9a930060d38aa'},
+       {'name': 'Ubuntu', 'id': 'ami-06e7b9c5e0c4dd014', 'version': '18.04'},
+       {'name': 'RedHat', 'id': 'ami-3eee4150', 'version': '7.5'},
+       {'name': 'SUSE', 'id': 'ami-04ecb44b7d8e8d354', 'version': 'ES15'}]
+
 
 def datetime_to_str(data):
     if isinstance(data, datetime.datetime):
@@ -189,8 +202,9 @@ class LaunchEC2:
             print(e)
 
 
-class Templates:
-    def create_launch_template(self, template_name='', version_description=None, template_data={}):
+class EC2Templates:
+    @staticmethod
+    def create_launch_template(template_name='', version_description='', template_data={}):
         try:
             ec2.create_launch_template(
                 DryRun=True,
@@ -217,7 +231,8 @@ class Templates:
         except ClientError as e:
             print(e)
 
-    def delete_launch_template(self, template_name=''):
+    @staticmethod
+    def delete_launch_template(template_name=''):
         try:
             ec2.delete_launch_template(
                 DryRun=True,
@@ -238,7 +253,8 @@ class Templates:
         except ClientError as e:
             print(e)
 
-    def describe_launch_templates(self, template_name=None, template_id=None):
+    @staticmethod
+    def describe_launch_templates(template_name=None, template_id=None):
         if template_id is not None:
             response = ec2.describe_launch_templates(
                 DryRun=False,
@@ -254,7 +270,8 @@ class Templates:
 
         return response
 
-    def get_launch_template_data(self, InstanceId=''):
+    @staticmethod
+    def get_launch_template_data(InstanceId=''):
         response = ec2.get_launch_template_data(
             DryRun=False,
             InstanceId=InstanceId
@@ -263,109 +280,64 @@ class Templates:
         return response
 
 
+class SecurityGroups:
+    @staticmethod
+    def describe_security_groups():
+        try:
+            response = ec2.describe_security_groups()
+
+            return response
+        except ClientError as e:
+            print(e)
+
+
+def availability_zones():
+    try:
+        response = ec2.describe_availability_zones(
+            DryRun=False,
+        )
+
+        return response
+    except ClientError as e:
+        print(e)
+
+
 if __name__ == '__main__':
-    all_instances = ec2.describe_instances()
+    ec2_ = EC2Templates()
+    template_data = {
+        "TagSpecifications": [
+            {
+                "ResourceType": "instance",
+                "Tags": [
+                    {
+                        "Value": "Test",
+                        "Key": "Name"
+                    }
+                ]
+            }
+        ],
+        "ImageId": "ami-00dc207f8ba6dc919",
+        "KeyName": "test",
+        "CreditSpecification": {
+            "CpuCredits": "standard"
+        },
+        "Placement": {
+            "Tenancy": "default",
+            "AvailabilityZone": "ap-northeast-2a"
+        },
+        "InstanceType": "t2.micro",
+        "NetworkInterfaces": [
+            {
+                "SubnetId": "subnet-bd0c23d5",
+                "DeleteOnTermination": True,
+                "Groups": [
+                    "sg-02996e2bf676d5776"
+                ],
+                "AssociatePublicIpAddress": True
+            }
+        ]
+    }
 
-    instanceId_list = []
-    for reservation in all_instances["Reservations"]:
-        instance_id = reservation.get('Instances')[0].get('InstanceId')
-        instanceId_list.append(instance_id)
-
-    ec2_ = EC2Operation()
-
-    while True:
-        print("Instances List")
-
-        for idx, instanceId in enumerate(instanceId_list, 1):
-            print(idx, ": ", instanceId)
-
-        print("")
-
-        command = input("Operation\n"
-                        "1: Stop Instances\n"
-                        "2: Start Instances\n"
-                        "3: Reboot Instances\n"
-                        "4: Describe Instances\n"
-                        "5: Check instance status\n"
-                        "6: Launch instance\n"
-                        "7: Exit\n:")
-
-        if command not in ['1', '2', '3', '4', '5', '6']:
-            print("Wrong number\n")
-            continue
-
-        print("")
-
-        if command == '1':
-            try:
-                selected_instance = input("Instance ID to stop: ")
-                print("")
-                ec2_.instance_ids = instanceId_list[int(selected_instance) - 1]
-                ec2_.stop_instances()
-            except IndexError:
-                print("Wrong Number\n")
-                continue
-        elif command == '2':
-            try:
-                selected_instance = input("Instance ID to start: ")
-                print("")
-                ec2_.instance_ids = instanceId_list[int(selected_instance) - 1]
-                ec2_.start_instances()
-            except IndexError:
-                print("Wrong Number\n")
-                continue
-        elif command == '3':
-            try:
-                selected_instance = input("Instance ID to reboot: ")
-                print("")
-                ec2_.instance_ids = instanceId_list[int(selected_instance) - 1]
-                ec2_.reboot_instances()
-            except IndexError:
-                print("Wrong Number\n")
-                continue
-        elif command == '4':
-            while True:
-                all_ = input("Do you want to describe all instances?(Y/N)\n")
-                if all_.upper() not in ['Y', 'N']:
-                    print("Type only Y or N\n")
-                    continue
-                break
-
-            while True:
-                save_ = input("Do you want to save describe into file?(Y/N)\n")
-                if save_.upper() not in ['Y', 'N']:
-                    print("Type only Y or N\n")
-                    continue
-                break
-
-            if all_.upper() == "Y" and save_.upper() == "Y":
-                ec2_.desc_instances(all_instance=True, save_to_file=True)
-            elif all_.upper() == "Y" and save_.upper() == "N":
-                ec2_.desc_instances(all_instance=True)
-            else:
-                selected_instance = input("Instance Id to describe: ")
-                if save_.upper() == "Y":
-                    ec2_.instance_ids = instanceId_list[int(selected_instance) - 1]
-                    ec2_.desc_instances(save_to_file=True)
-                else:
-                    ec2_.instance_ids = instanceId_list[int(selected_instance) - 1]
-                    ec2_.desc_instances()
-        elif command == '5':
-            try:
-                selected_instance = input("Instance ID to check status: ")
-                print("")
-                ec2_.instance_ids = instanceId_list[int(selected_instance) - 1]
-                ec2_.instance_status()
-            except IndexError:
-                print("Wrong Number\n")
-                continue
-
-        elif command == '6':
-            pass
-
-        elif command == '7':
-            break
-
-        else:
-            print("Wrong Number")
-            print("")
+    res = ec2_.create_launch_template(template_name='test', template_data=template_data)
+    import pprint
+    pprint.pprint(res)
