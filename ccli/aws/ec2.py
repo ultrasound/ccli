@@ -182,7 +182,40 @@ class EC2Operation:
 
 class LaunchEC2:
     @staticmethod
-    def run_instance(max_cnt=1, min_cnt=1, template_name=''):
+    def run_instance(max_cnt=1, min_cnt=1, template_name=None, **kwargs):
+        ec2.run_instances(
+            BlockDeviceMappings=[
+                {
+                    'Ebs': {
+                        'DeleteOnTermination': kwargs['delete_on_termination'],
+                        'VolumeSize': volume_size,
+                        'VolumeType': 'gp2',
+                    },
+                },
+            ],
+            ImageId=image_id,
+            InstanceType=instance_type,
+            KeyName=key_name,
+            MaxCount=max_cnt,
+            MinCount=min_cnt,
+            Placement={
+                'AvailabilityZone': availability_zones_,
+                'Tenancy': 'default',
+            },
+            DisableApiTermination=diasble_api_termination,
+            InstanceInitiatedShutdownBehavior=shutdown_behavior,
+            NetworkInsterfaces=[
+                {
+                    'AssociatePublicIpAddress': public_address,
+                    'DeleteOnTermination': delete_on_termination,
+                    'Groups': [
+                        security_group,
+                    ],
+                    'SubnetId': subnet_id,
+                },
+            ],
+        )
+
         try:
             ec2.run_instances(
                 MaxCount=max_cnt,

@@ -1,19 +1,20 @@
 # -*- coding: utf-8 -*-
-import os
 from pprint import pprint
 
 from cement import Controller, ex, shell
 from PyInquirer import prompt, print_json, Separator
 from examples import custom_style_3
 
-from libcloud.compute.types import Provider
-from libcloud.compute.providers import get_driver
+from ..aws.ec2 import EC2Operation, SecurityGroups, availability_zones, LaunchEC2
+from ..aws.ec2 import EC2Templates as tmp
+from ..aws.ec2 import INSTANCE_TYPES, AMIS
 
-EC2_ACCESS_ID = os.environ['AWS_ACCESS_KEY_ID']
-EC2_SECRET_KEY = os.environ['AWS_SECRET_ACCESS_KEY']
+from ..aws.ec2_key import KeyPairOperation
 
-EC2Driver = get_driver(Provider.EC2)
-EC2_ = EC2Driver(EC2_ACCESS_ID, EC2_SECRET_KEY)
+from ..aws.vpc import VPC
+
+key_pair_operation = KeyPairOperation()
+vpc_ = VPC()
 
 
 def get_template_list():
@@ -24,6 +25,20 @@ def get_template_list():
         template_list.append(template['LaunchTemplateName'])
 
     return template_list
+
+
+def get_ami_list(id_=False, name=False):
+    amis = AMIS
+    if id_:
+        amis_names = [ami['name'] for ami in amis]
+
+        return amis_names
+    elif name:
+        amis_id = [ami['id'] for ami in amis]
+
+        return amis_id
+    else:
+        return amis
 
 
 def get_key_pair_list():
@@ -53,6 +68,10 @@ class EC2(Controller):
         help = 'manage EC2'
         title = 'EC2 operations'
         description = 'Operating EC2 instances'
+
+    def __init__(self):
+        super().__init__()
+        self.ec2_ = EC2Operation()
 
     @ex(help='List instances')
     def list(self):
